@@ -42,6 +42,14 @@ struct MainMenuView: View {
                         .foregroundColor(.white)
                         .cornerRadius(10)
                 }
+                NavigationLink(destination: HeightMeasurementView()){
+                    Text("📏 Height Measurement")
+                        .frame(maxWidth: .infinity)
+                        .padding()
+                        .background(Color.red)
+                        .foregroundColor(.white)
+                        .cornerRadius(10)
+                }
                 
                 Spacer()
             }

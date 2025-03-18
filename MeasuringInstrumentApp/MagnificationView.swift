@@ -3,6 +3,7 @@ import AVFoundation
 
 struct MagnificationView: View {
     @State private var zoomFactor: CGFloat = 1.0
+    @State private var isFlashOn: Bool = false
     
     var body: some View {
         VStack {
@@ -10,8 +11,8 @@ struct MagnificationView: View {
                 .font(.title)
                 .padding()
             
-            CameraView(zoomFactor: $zoomFactor) // Camera preview
-                .edgesIgnoringSafeArea(.all)
+            CameraView(zoomFactor: $zoomFactor, isFlashOn: $isFlashOn) // Camera preview
+                .ignoresSafeArea()
                 .frame(height: 500)
             
             Slider(value: $zoomFactor, in: 1.0...10.0, step: 0.1)
@@ -20,6 +21,17 @@ struct MagnificationView: View {
             Text("Zoom: \(String(format: "%.1f", zoomFactor))x")
                 .font(.headline)
                 .padding()
+            
+            Button(action: {
+                isFlashOn.toggle()
+            }) {
+                Text(isFlashOn ? "🔦 Turn Off Flashlight" : "💡 Turn On Flashlight")
+                    .padding()
+                    .background(isFlashOn ? Color.red : Color.blue)
+                    .foregroundColor(.white)
+                    .cornerRadius(10)
+            }
+            .padding()
         }
     }
 }
@@ -27,15 +39,17 @@ struct MagnificationView: View {
 // UIKit Wrapper for AVCaptureSession
 struct CameraView: UIViewControllerRepresentable {
     @Binding var zoomFactor: CGFloat
+    @Binding var isFlashOn: Bool // ✅ Explicit type annotation
     
     func makeUIViewController(context: Context) -> CameraViewController {
-        let cameraVC = CameraViewController()
+        let cameraVC: CameraViewController = CameraViewController() // ✅ Explicit type annotation
         cameraVC.zoomFactor = zoomFactor
         return cameraVC
     }
     
     func updateUIViewController(_ uiViewController: CameraViewController, context: Context) {
         uiViewController.updateZoom(zoomFactor: zoomFactor)
+        uiViewController.toggleFlashlight(isOn: isFlashOn)
     }
 }
 
@@ -54,13 +68,13 @@ class CameraViewController: UIViewController {
             self.captureSession = AVCaptureSession()
             print("✅ Initializing AVCaptureSession")
 
-            guard let videoCaptureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
+            guard let videoCaptureDevice: AVCaptureDevice = AVCaptureDevice.default(.builtInWideAngleCamera, for: .video, position: .back) else {
                 print("❌ No camera available")
                 return
             }
 
             do {
-                let videoInput = try AVCaptureDeviceInput(device: videoCaptureDevice)
+                let videoInput: AVCaptureDeviceInput = try AVCaptureDeviceInput(device: videoCaptureDevice)
                 if self.captureSession.canAddInput(videoInput) {
                     self.captureSession.addInput(videoInput)
                     print("✅ Camera input added")
@@ -85,13 +99,30 @@ class CameraViewController: UIViewController {
     }
     
     func updateZoom(zoomFactor: CGFloat) {
-        guard let device = AVCaptureDevice.default(for: .video) else { return }
+        guard let device: AVCaptureDevice = AVCaptureDevice.default(for: .video) else { return }
         do {
             try device.lockForConfiguration()
             device.videoZoomFactor = zoomFactor
             device.unlockForConfiguration()
         } catch {
             print("Error adjusting zoom: \(error)")
+        }
+    }
+    
+    // ✅ Toggle Flashlight
+    func toggleFlashlight(isOn: Bool) {
+        guard let device: AVCaptureDevice = AVCaptureDevice.default(for: .video), device.hasTorch else {
+            print("❌ Flashlight not available")
+            return
+        }
+        
+        do {
+            try device.lockForConfiguration()
+            device.torchMode = isOn ? .on : .off
+            device.unlockForConfiguration()
+            print(isOn ? "✅ Flashlight turned ON" : "✅ Flashlight turned OFF")
+        } catch {
+            print("❌ Error toggling flashlight: \(error)")
         }
     }
 }
